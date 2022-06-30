@@ -2,19 +2,8 @@
 #include "FreeRTOS.h"
 #include "task.h"
 #include "Assert.h"
+#include "rlm3-atomic.h"
 
-
-static bool AtomicLock(SpinLock* lock)
-{
-	bool was_locked;
-
-	taskENTER_CRITICAL();
-	was_locked = lock->is_locked;
-	lock->is_locked = true;
-	taskEXIT_CRITICAL();
-
-	return !was_locked;
-}
 
 extern void RLM3_SpinLock_Init(SpinLock* lock)
 {
@@ -35,7 +24,7 @@ extern void RLM3_SpinLock_Enter(SpinLock* lock)
 	ASSERT(!RLM3_IsIRQ());
 	ASSERT(RLM3_IsSchedulerRunning());
 
-	while (!AtomicLock(lock))
+	while (RLM3_Atomic_SetBool(&lock->is_locked))
 	{
 		taskYIELD();
 		if (lock->is_locked)
@@ -55,7 +44,7 @@ extern bool RLM3_SpinLock_Try(SpinLock* lock, size_t timeout_ms)
 
 	TickType_t start_time = xTaskGetTickCount();
 	TickType_t timeout_ticks = pdMS_TO_TICKS(timeout_ms);
-	while (!AtomicLock(lock))
+	while (RLM3_Atomic_SetBool(&lock->is_locked))
 	{
 		if (xTaskGetTickCount() - start_time >= timeout_ticks)
 			return false;

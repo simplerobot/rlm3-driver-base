@@ -7,7 +7,7 @@ extern "C" {
 #endif
 
 
-typedef struct SpinLock
+typedef struct
 {
 	volatile bool is_locked;
 #ifdef TEST
@@ -22,7 +22,7 @@ extern bool RLM3_SpinLock_Try(SpinLock* lock, size_t timeout_ms);
 extern void RLM3_SpinLock_Leave(SpinLock* lock);
 
 
-typedef struct MutexLock
+typedef struct
 {
 	volatile void* queue;
 #ifdef TEST

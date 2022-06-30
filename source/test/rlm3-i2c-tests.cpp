@@ -1,0 +1,80 @@
+#include "Test.hpp"
+#include "rlm3-i2c.h"
+
+
+
+TEST_CASE(I2C1_Lifecycle_HappyCase)
+{
+	ASSERT(!RLM3_I2C1_IsInit(RLM3_I2C1_DEVICE_TEST));
+	RLM3_I2C1_Init(RLM3_I2C1_DEVICE_TEST);
+	ASSERT(RLM3_I2C1_IsInit(RLM3_I2C1_DEVICE_TEST));
+	RLM3_I2C1_Deinit(RLM3_I2C1_DEVICE_TEST);
+	ASSERT(!RLM3_I2C1_IsInit(RLM3_I2C1_DEVICE_TEST));
+}
+
+TEST_CASE(I2C1_Lifecycle_MultipleDevices)
+{
+	ASSERT(!RLM3_I2C1_IsInit(RLM3_I2C1_DEVICE_TEST));
+	ASSERT(!RLM3_I2C1_IsInit(RLM3_I2C1_DEVICE_CAMERA));
+	RLM3_I2C1_Init(RLM3_I2C1_DEVICE_TEST);
+	ASSERT(RLM3_I2C1_IsInit(RLM3_I2C1_DEVICE_TEST));
+	ASSERT(!RLM3_I2C1_IsInit(RLM3_I2C1_DEVICE_CAMERA));
+	RLM3_I2C1_Init(RLM3_I2C1_DEVICE_CAMERA);
+	ASSERT(RLM3_I2C1_IsInit(RLM3_I2C1_DEVICE_TEST));
+	ASSERT(RLM3_I2C1_IsInit(RLM3_I2C1_DEVICE_CAMERA));
+	RLM3_I2C1_Deinit(RLM3_I2C1_DEVICE_TEST);
+	ASSERT(!RLM3_I2C1_IsInit(RLM3_I2C1_DEVICE_TEST));
+	ASSERT(RLM3_I2C1_IsInit(RLM3_I2C1_DEVICE_CAMERA));
+	RLM3_I2C1_Deinit(RLM3_I2C1_DEVICE_CAMERA);
+	ASSERT(!RLM3_I2C1_IsInit(RLM3_I2C1_DEVICE_TEST));
+	ASSERT(!RLM3_I2C1_IsInit(RLM3_I2C1_DEVICE_CAMERA));
+}
+
+TEST_CASE(I2C1_TransmitReceive_HappyCase)
+{
+	RLM3_I2C1_Init(RLM3_I2C1_DEVICE_STORAGE);
+
+	uint8_t data[8];
+	uint8_t byte_addr = 0;
+
+	ASSERT(RLM3_I2C1_TransmitReceive(0x50, &byte_addr, 1, data, sizeof(data)));
+
+	RLM3_I2C1_Deinit(RLM3_I2C1_DEVICE_STORAGE);
+}
+
+
+TEST_CASE(I2C1_Transmit_NoSuchAddress)
+{
+	RLM3_I2C1_Init(RLM3_I2C1_DEVICE_TEST);
+	bool result = RLM3_I2C1_Transmit(0x6C, (const uint8_t*)"blah", 4);
+	RLM3_I2C1_Deinit(RLM3_I2C1_DEVICE_TEST);
+
+	ASSERT(!result);
+}
+
+TEST_CASE(I2C1_Receive_NoSuchAddress)
+{
+	RLM3_I2C1_Init(RLM3_I2C1_DEVICE_TEST);
+	uint8_t data[4];
+	bool result = RLM3_I2C1_Receive(0x6C, data, sizeof(data));
+	RLM3_I2C1_Deinit(RLM3_I2C1_DEVICE_TEST);
+
+	ASSERT(!result);
+}
+
+TEST_CASE(I2C1_TransmitReceive_NoSuchAddress)
+{
+	RLM3_I2C1_Init(RLM3_I2C1_DEVICE_TEST);
+	uint8_t data[4];
+	bool result = RLM3_I2C1_TransmitReceive(0x6C, (const uint8_t*)"blah", 4, data, sizeof(data));
+	RLM3_I2C1_Deinit(RLM3_I2C1_DEVICE_TEST);
+
+	ASSERT(!result);
+}
+
+TEST_TEARDOWN(I2C1_CloseActiveConnections)
+{
+	for (uint32_t i = 0; i < RLM3_I2C1_DEVICE_COUNT; i++)
+		if (RLM3_I2C1_IsInit((RLM3_I2C1_DEVICE)i))
+			RLM3_I2C1_Deinit((RLM3_I2C1_DEVICE)i);
+}

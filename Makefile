@@ -18,7 +18,7 @@ HX = $(TOOLCHAIN_PATH)objcopy -O ihex
 BN = $(TOOLCHAIN_PATH)objcopy -O binary -S
 
 MCU = -mcpu=cortex-m4 -mthumb -mfpu=fpv4-sp-d16 -mfloat-abi=hard 
-OPTIONS = -fdata-sections -ffunction-sections -Wall -Werror -DUSE_FULL_ASSERT=1
+OPTIONS = -fdata-sections -ffunction-sections -Wall -Werror -DUSE_FULL_ASSERT=1 -fexceptions
 
 LIBRARIES = \
 	-lc \
