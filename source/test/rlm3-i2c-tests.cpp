@@ -32,14 +32,14 @@ TEST_CASE(I2C1_Lifecycle_MultipleDevices)
 
 TEST_CASE(I2C1_TransmitReceive_HappyCase)
 {
-	RLM3_I2C1_Init(RLM3_I2C1_DEVICE_STORAGE);
+	RLM3_I2C1_Init(RLM3_I2C1_DEVICE_FLASH);
 
 	uint8_t data[8];
 	uint8_t byte_addr = 0;
 
 	ASSERT(RLM3_I2C1_TransmitReceive(0x50, &byte_addr, 1, data, sizeof(data)));
 
-	RLM3_I2C1_Deinit(RLM3_I2C1_DEVICE_STORAGE);
+	RLM3_I2C1_Deinit(RLM3_I2C1_DEVICE_FLASH);
 }
 
 
