@@ -1,12 +1,11 @@
 #include "rlm3-i2c.h"
 #include "rlm3-lock.h"
+#include "rlm3-task.h"
 #include "stm32f4xx_hal.h"
 #include "stm32f4xx_hal_i2c.h"
 #include "main.h"
 #include "logger.h"
 #include "i2c.h"
-#include "FreeRTOS.h"
-#include "task.h"
 #include "Assert.h"
 
 
@@ -24,12 +23,12 @@ enum
 };
 
 
-static SpinLock g_lock_i2c1;
+static RLM3_SpinLock g_lock_i2c1;
 
 static uint8_t g_active_devices_i2c1 = 0;
 
 static volatile uint8_t g_state_i2c1 = I2C_STATE_IDLE;
-static volatile TaskHandle_t g_waiting_thread_i2c1 = NULL;
+static volatile RLM3_Task g_waiting_thread_i2c1 = NULL;
 
 
 static __attribute__((constructor)) void Init_I2C()
@@ -83,14 +82,14 @@ extern bool RLM3_I2C1_Transmit(uint32_t addr, const uint8_t* data, size_t size)
 	RLM3_SpinLock_Enter(&g_lock_i2c1);
 	ASSERT(g_waiting_thread_i2c1 == NULL);
 	ASSERT(g_state_i2c1 == I2C_STATE_IDLE);
-	g_waiting_thread_i2c1 = xTaskGetCurrentTaskHandle();
+	g_waiting_thread_i2c1 = RLM3_GetCurrentTask();
 	g_state_i2c1 = I2C_STATE_TX_WAIT;
 
 	HAL_StatusTypeDef status = HAL_I2C_Master_Transmit_IT(&hi2c1, (addr << 1) | 0x00, (uint8_t*)data, size);
 	while (status == HAL_OK && g_state_i2c1 == I2C_STATE_TX_WAIT)
 	{
 		LOG_TRACE("TAKE %d %d %d", status, hi2c1.State, g_state_i2c1);
-		ulTaskNotifyTake(pdTRUE, portMAX_DELAY);
+		RLM3_Take();
 		LOG_TRACE("DONE %d %d %d", status, hi2c1.State, g_state_i2c1);
 	}
 	bool result = (status == HAL_OK && g_state_i2c1 == I2C_STATE_TX_DONE);
@@ -114,12 +113,12 @@ extern bool RLM3_I2C1_Receive(uint32_t addr, uint8_t* data, size_t size)
 	RLM3_SpinLock_Enter(&g_lock_i2c1);
 	ASSERT(g_waiting_thread_i2c1 == NULL);
 	ASSERT(g_state_i2c1 == I2C_STATE_IDLE);
-	g_waiting_thread_i2c1 = xTaskGetCurrentTaskHandle();
+	g_waiting_thread_i2c1 = RLM3_GetCurrentTask();
 	g_state_i2c1 = I2C_STATE_RX_WAIT;
 
 	HAL_StatusTypeDef status = HAL_I2C_Master_Receive_IT(&hi2c1, (addr << 1) | 0x01, data, size);
 	while (status == HAL_OK && hi2c1.State == HAL_I2C_STATE_BUSY_RX)
-		ulTaskNotifyTake(pdTRUE, portMAX_DELAY);
+		RLM3_Take();
 	bool result = (status == HAL_OK && g_state_i2c1 == I2C_STATE_RX_DONE);
 
 	g_waiting_thread_i2c1 = NULL;
@@ -141,7 +140,7 @@ extern bool RLM3_I2C1_TransmitReceive(uint32_t addr, const uint8_t* tx_data, siz
 	RLM3_SpinLock_Enter(&g_lock_i2c1);
 	ASSERT(g_waiting_thread_i2c1 == NULL);
 	ASSERT(g_state_i2c1 == I2C_STATE_IDLE);
-	g_waiting_thread_i2c1 = xTaskGetCurrentTaskHandle();
+	g_waiting_thread_i2c1 = RLM3_GetCurrentTask();
 
 	HAL_StatusTypeDef status = HAL_OK;
 
@@ -151,7 +150,7 @@ extern bool RLM3_I2C1_TransmitReceive(uint32_t addr, const uint8_t* tx_data, siz
 		status = HAL_I2C_Master_Seq_Transmit_IT(&hi2c1, (addr << 1) | 0x00, (uint8_t*)tx_data, tx_size, I2C_FIRST_FRAME);
 	}
 	while (status == HAL_OK && g_state_i2c1 == I2C_STATE_TX_WAIT)
-		ulTaskNotifyTake(pdTRUE, portMAX_DELAY);
+		RLM3_Take();
 
 	if (status == HAL_OK && g_state_i2c1 == I2C_STATE_TX_DONE)
 	{
@@ -159,7 +158,7 @@ extern bool RLM3_I2C1_TransmitReceive(uint32_t addr, const uint8_t* tx_data, siz
 		status = HAL_I2C_Master_Seq_Receive_IT(&hi2c1, (addr << 1) | 0x01, rx_data, rx_size, I2C_LAST_FRAME);
 	}
 	while (status == HAL_OK && g_state_i2c1 == I2C_STATE_RX_WAIT)
-		ulTaskNotifyTake(pdTRUE, portMAX_DELAY);
+		RLM3_Take();
 
 	bool result = (status == HAL_OK && g_state_i2c1 == I2C_STATE_RX_DONE);
 
@@ -172,17 +171,12 @@ extern bool RLM3_I2C1_TransmitReceive(uint32_t addr, const uint8_t* tx_data, siz
 
 static void WakeupWaitingThreadFromISR(I2C_HandleTypeDef *hi2c, uint8_t new_state)
 {
-	TaskHandle_t task = NULL;
 	if (hi2c == &hi2c1)
 	{
-		task = g_waiting_thread_i2c1;
 		g_state_i2c1 = new_state;
+		RLM3_Give(g_waiting_thread_i2c1);
 	}
 
-	BaseType_t higher_priority_task_woken = pdFALSE;
-	if (task != NULL)
-		vTaskNotifyGiveFromISR(task, &higher_priority_task_woken);
-	portYIELD_FROM_ISR(higher_priority_task_woken);
 }
 
 extern void HAL_I2C_MasterTxCpltCallback(I2C_HandleTypeDef *hi2c)

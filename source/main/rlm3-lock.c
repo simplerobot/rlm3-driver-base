@@ -1,11 +1,12 @@
 #include "rlm3-lock.h"
-#include "FreeRTOS.h"
-#include "task.h"
 #include "Assert.h"
 #include "rlm3-atomic.h"
+#include "rlm3-task.h"
+#include "FreeRTOS.h"
+#include "task.h"
 
 
-extern void RLM3_SpinLock_Init(SpinLock* lock)
+extern void RLM3_SpinLock_Init(RLM3_SpinLock* lock)
 {
 	lock->is_locked = false;
 #ifdef TEST
@@ -13,59 +14,58 @@ extern void RLM3_SpinLock_Init(SpinLock* lock)
 #endif
 }
 
-extern void RLM3_SpinLock_Deinit(SpinLock* lock)
+extern void RLM3_SpinLock_Deinit(RLM3_SpinLock* lock)
 {
 	ASSERT(!lock->is_locked);
 	ASSERT(lock->owner == NULL);
 }
 
-extern void RLM3_SpinLock_Enter(SpinLock* lock)
+extern void RLM3_SpinLock_Enter(RLM3_SpinLock* lock)
 {
 	ASSERT(!RLM3_IsIRQ());
 	ASSERT(RLM3_IsSchedulerRunning());
 
 	while (RLM3_Atomic_SetBool(&lock->is_locked))
 	{
-		taskYIELD();
+		RLM3_Yield();
 		if (lock->is_locked)
-			vTaskDelay(1);
+			RLM3_Delay(0);
 	}
 
 #ifdef TEST
 	ASSERT(lock->owner == NULL);
-	lock->owner = xTaskGetCurrentTaskHandle();
+	lock->owner = RLM3_GetCurrentTask();
 #endif
 }
 
-extern bool RLM3_SpinLock_Try(SpinLock* lock, size_t timeout_ms)
+extern bool RLM3_SpinLock_Try(RLM3_SpinLock* lock, size_t timeout_ms)
 {
 	ASSERT(!RLM3_IsIRQ());
 	ASSERT(RLM3_IsSchedulerRunning());
 
-	TickType_t start_time = xTaskGetTickCount();
-	TickType_t timeout_ticks = pdMS_TO_TICKS(timeout_ms);
+	RLM3_Time start_time = RLM3_GetCurrentTime();
 	while (RLM3_Atomic_SetBool(&lock->is_locked))
 	{
-		if (xTaskGetTickCount() - start_time >= timeout_ticks)
+		if (RLM3_GetCurrentTime() - start_time >= timeout_ms)
 			return false;
 
-		taskYIELD();
+		RLM3_Yield();
 		if (lock->is_locked)
-			vTaskDelay(1);
+			RLM3_Delay(0);
 	}
 
 #ifdef TEST
 	ASSERT(lock->owner == NULL);
-	lock->owner = xTaskGetCurrentTaskHandle();
+	lock->owner = RLM3_GetCurrentTask();
 #endif
 
 	return true;
 }
 
-extern void RLM3_SpinLock_Leave(SpinLock* lock)
+extern void RLM3_SpinLock_Leave(RLM3_SpinLock* lock)
 {
 	ASSERT(lock->is_locked);
-	ASSERT(lock->owner == xTaskGetCurrentTaskHandle());
+	ASSERT(lock->owner == RLM3_GetCurrentTask());
 #ifdef TEST
 	lock->owner = NULL;
 #endif
@@ -88,7 +88,7 @@ static TaskHandle_t GetNext(TaskHandle_t task)
 	return (TaskHandle_t)pvTaskGetThreadLocalStoragePointer(task, 0);
 }
 
-static void AtomicAddTaskToWaitQueue(MutexLock* lock, TaskHandle_t task)
+static void AtomicAddTaskToWaitQueue(RLM3_MutexLock* lock, TaskHandle_t task)
 {
 	taskENTER_CRITICAL();
 	vTaskSetThreadLocalStoragePointer(task, 0, (void*)lock->queue);
@@ -96,7 +96,7 @@ static void AtomicAddTaskToWaitQueue(MutexLock* lock, TaskHandle_t task)
 	taskEXIT_CRITICAL();
 }
 
-static void AtomicRemoveTaskFromWaitQueue(MutexLock* lock, TaskHandle_t task, TaskHandle_t* prev_out, TaskHandle_t* next_out)
+static void AtomicRemoveTaskFromWaitQueue(RLM3_MutexLock* lock, TaskHandle_t task, TaskHandle_t* prev_out, TaskHandle_t* next_out)
 {
 	// Walk down the linked list to find the target task.  This assumes a short queue since this must not disable interrupts for long.
 	TaskHandle_t prev = NULL;
@@ -129,7 +129,7 @@ static void AtomicRemoveTaskFromWaitQueue(MutexLock* lock, TaskHandle_t task, Ta
 }
 
 
-extern void RLM3_MutexLock_Init(MutexLock* lock)
+extern void RLM3_MutexLock_Init(RLM3_MutexLock* lock)
 {
 	lock->queue = NULL;
 #ifdef TEST
@@ -137,13 +137,13 @@ extern void RLM3_MutexLock_Init(MutexLock* lock)
 #endif
 }
 
-extern void RLM3_MutexLock_Deinit(MutexLock* lock)
+extern void RLM3_MutexLock_Deinit(RLM3_MutexLock* lock)
 {
 	ASSERT(lock->queue == NULL);
 	ASSERT(lock->owner == NULL);
 }
 
-extern void RLM3_MutexLock_Enter(MutexLock* lock)
+extern void RLM3_MutexLock_Enter(RLM3_MutexLock* lock)
 {
 	ASSERT(!RLM3_IsIRQ());
 	ASSERT(RLM3_IsSchedulerRunning());
@@ -158,15 +158,15 @@ extern void RLM3_MutexLock_Enter(MutexLock* lock)
 
 	// Wait until no other tasks are in front of us.
 	while ((blocking_task = GetNext(current_task)) != NULL)
-		ulTaskNotifyTake(pdTRUE, portMAX_DELAY);
+		RLM3_Take();
 
 #ifdef TEST
 	ASSERT(lock->owner == NULL);
-	lock->owner = (void*)current_task;
+	lock->owner = (RLM3_Task)current_task;
 #endif
 }
 
-extern bool RLM3_MutexLock_Try(MutexLock* lock, size_t timeout_ms)
+extern bool RLM3_MutexLock_Try(RLM3_MutexLock* lock, size_t timeout_ms)
 {
 	ASSERT(!RLM3_IsIRQ());
 	ASSERT(RLM3_IsSchedulerRunning());
@@ -195,24 +195,24 @@ extern bool RLM3_MutexLock_Try(MutexLock* lock, size_t timeout_ms)
 
 			// If we actually may have gotten a notification, pass it on to the new candidate.
 			if (next == NULL && prev != NULL)
-				xTaskNotifyGive(prev);
+				RLM3_Give(prev);
 			return false;
 		}
 
 		// Wait for notification.
 		TickType_t wait_time = start_time + timeout_ticks - current_time;
-		ulTaskNotifyTake(pdTRUE, wait_time);
+		RLM3_TakeTimeout(wait_time);
 	}
 
 #ifdef TEST
 	ASSERT(lock->owner == NULL);
-	lock->owner = (void*)current_task;
+	lock->owner = (RLM3_Task)current_task;
 #endif
 
 	return true;
 }
 
-extern void RLM3_MutexLock_Leave(MutexLock* lock)
+extern void RLM3_MutexLock_Leave(RLM3_MutexLock* lock)
 {
 	ASSERT(!RLM3_IsIRQ());
 	ASSERT(RLM3_IsSchedulerRunning());
@@ -232,7 +232,6 @@ extern void RLM3_MutexLock_Leave(MutexLock* lock)
 	AtomicRemoveTaskFromWaitQueue(lock, current_task, &blocked_task, NULL);
 
 	// Wake up the next task in the queue.
-	if (blocked_task != NULL)
-		xTaskNotifyGive(blocked_task);
+	RLM3_Give(blocked_task);
 }
 

@@ -5,7 +5,7 @@
 
 TEST_CASE(SpinLock_Lifecycle_HappyCase)
 {
-	SpinLock test;
+	RLM3_SpinLock test;
 	RLM3_SpinLock_Init(&test);
 
 	RLM3_SpinLock_Enter(&test);
@@ -16,7 +16,7 @@ TEST_CASE(SpinLock_Lifecycle_HappyCase)
 
 TEST_CASE(SpinLock_MultipleThreads_SharedWork)
 {
-	static SpinLock test;
+	static RLM3_SpinLock test;
 	auto secondary_thread_fn = [](void* param)
 	{
 		volatile size_t* value = (size_t*)param;
@@ -45,14 +45,14 @@ TEST_CASE(SpinLock_Try_HappyCase)
 {
 	auto secondary_thread_fn = [](void* param)
 	{
-		SpinLock* lock = (SpinLock*)param;
+		RLM3_SpinLock* lock = (RLM3_SpinLock*)param;
 		RLM3_SpinLock_Enter(lock);
 		::osDelay(5);
 		RLM3_SpinLock_Leave(lock);
 		::osThreadExit();
 	};
 
-	SpinLock test;
+	RLM3_SpinLock test;
 	RLM3_SpinLock_Init(&test);
 
 	osThreadAttr_t task_attributes = {};
@@ -68,7 +68,7 @@ TEST_CASE(SpinLock_Try_HappyCase)
 
 TEST_CASE(MutexLock_Lifecycle_HappyCase)
 {
-	MutexLock test;
+	RLM3_MutexLock test;
 	RLM3_MutexLock_Init(&test);
 
 	RLM3_MutexLock_Enter(&test);
@@ -79,7 +79,7 @@ TEST_CASE(MutexLock_Lifecycle_HappyCase)
 
 TEST_CASE(MutexLock_MultipleThreads_SharedWork)
 {
-	static MutexLock test;
+	static RLM3_MutexLock test;
 	auto secondary_thread_fn = [](void* param)
 	{
 		volatile size_t* value = (size_t*)param;
@@ -108,14 +108,14 @@ TEST_CASE(MutexLock_Try_HappyCase)
 {
 	auto secondary_thread_fn = [](void* param)
 	{
-		MutexLock* lock = (MutexLock*)param;
+		RLM3_MutexLock* lock = (RLM3_MutexLock*)param;
 		RLM3_MutexLock_Enter(lock);
 		::osDelay(5);
 		RLM3_MutexLock_Leave(lock);
 		::osThreadExit();
 	};
 
-	MutexLock test;
+	RLM3_MutexLock test;
 	RLM3_MutexLock_Init(&test);
 
 	osThreadAttr_t task_attributes = {};

@@ -9,7 +9,7 @@ LOGGER_ZONE(STRESS);
 
 TEST_CASE(SpinLock_MultipleThreads_StressTest)
 {
-	static SpinLock g_lock;
+	static RLM3_SpinLock g_lock;
 	static volatile bool g_is_done = false;
 	static volatile size_t g_total_count = 0;
 	static volatile size_t g_miss_count = 0;
@@ -71,7 +71,7 @@ TEST_CASE(SpinLock_MultipleThreads_StressTest)
 
 TEST_CASE(MutexLock_MultipleThreads_StressTest)
 {
-	static MutexLock g_lock;
+	static RLM3_MutexLock g_lock;
 	static volatile bool g_is_done = false;
 	static volatile size_t g_total_count = 0;
 	static volatile size_t g_miss_count = 0;
