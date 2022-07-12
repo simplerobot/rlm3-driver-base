@@ -39,7 +39,7 @@ static __attribute__((constructor)) void Init_I2C()
 
 extern void RLM3_I2C1_Init(RLM3_I2C1_DEVICE device)
 {
-	LOG_TRACE("I2C1 Init %d", device);
+	LOG_TRACE("Init %d", device);
 
 	ASSERT(device < RLM3_I2C1_DEVICE_COUNT);
 	ASSERT(READ_BIT(g_active_devices_i2c1, 1 << device) == 0);
@@ -53,7 +53,7 @@ extern void RLM3_I2C1_Init(RLM3_I2C1_DEVICE device)
 
 extern void RLM3_I2C1_Deinit(RLM3_I2C1_DEVICE device)
 {
-	LOG_TRACE("I2C1 Deinit %d", device);
+	LOG_TRACE("Deinit %d", device);
 
 	ASSERT(device < RLM3_I2C1_DEVICE_COUNT);
 	ASSERT(READ_BIT(g_active_devices_i2c1, 1 << device) != 0);
@@ -72,7 +72,7 @@ extern bool RLM3_I2C1_IsInit(RLM3_I2C1_DEVICE device)
 
 extern bool RLM3_I2C1_Transmit(uint32_t addr, const uint8_t* data, size_t size)
 {
-	LOG_TRACE("I2C1 TX(%x) %d", (int)addr, size);
+	LOG_TRACE("TX(%x) %d", (int)addr, size);
 
 	ASSERT(g_active_devices_i2c1 != 0);
 	ASSERT(addr <= 0x7F);
@@ -87,11 +87,7 @@ extern bool RLM3_I2C1_Transmit(uint32_t addr, const uint8_t* data, size_t size)
 
 	HAL_StatusTypeDef status = HAL_I2C_Master_Transmit_IT(&hi2c1, (addr << 1) | 0x00, (uint8_t*)data, size);
 	while (status == HAL_OK && g_state_i2c1 == I2C_STATE_TX_WAIT)
-	{
-		LOG_TRACE("TAKE %d %d %d", status, hi2c1.State, g_state_i2c1);
 		RLM3_Take();
-		LOG_TRACE("DONE %d %d %d", status, hi2c1.State, g_state_i2c1);
-	}
 	bool result = (status == HAL_OK && g_state_i2c1 == I2C_STATE_TX_DONE);
 
 	g_waiting_thread_i2c1 = NULL;
@@ -103,7 +99,7 @@ extern bool RLM3_I2C1_Transmit(uint32_t addr, const uint8_t* data, size_t size)
 
 extern bool RLM3_I2C1_Receive(uint32_t addr, uint8_t* data, size_t size)
 {
-	LOG_TRACE("I2C1 RX(%x) %d", (int)addr, size);
+	LOG_TRACE("RX(%x) %d", (int)addr, size);
 
 	ASSERT(g_active_devices_i2c1 != 0);
 	ASSERT(addr <= 0x7F);
@@ -130,7 +126,7 @@ extern bool RLM3_I2C1_Receive(uint32_t addr, uint8_t* data, size_t size)
 
 extern bool RLM3_I2C1_TransmitReceive(uint32_t addr, const uint8_t* tx_data, size_t tx_size, uint8_t* rx_data, size_t rx_size)
 {
-	LOG_TRACE("I2C1 TR(%x) %d %d", (int)addr, tx_size, rx_size);
+	LOG_TRACE("TR(%x) %d %d", (int)addr, tx_size, rx_size);
 
 	ASSERT(g_active_devices_i2c1 != 0);
 	ASSERT(addr <= 0x7F);
@@ -169,30 +165,27 @@ extern bool RLM3_I2C1_TransmitReceive(uint32_t addr, const uint8_t* tx_data, siz
 	return result;
 }
 
-static void WakeupWaitingThreadFromISR(I2C_HandleTypeDef *hi2c, uint8_t new_state)
+static void WakeupWaitingThreadFromISR(I2C_HandleTypeDef *hi2c, uint8_t new_state, const char* type)
 {
+	LOG_TRACE("ISR %s", type);
 	if (hi2c == &hi2c1)
 	{
 		g_state_i2c1 = new_state;
 		RLM3_Give(g_waiting_thread_i2c1);
 	}
-
 }
 
 extern void HAL_I2C_MasterTxCpltCallback(I2C_HandleTypeDef *hi2c)
 {
-	LOG_TRACE("I2C INT TX");
-	WakeupWaitingThreadFromISR(hi2c, I2C_STATE_TX_DONE);
+	WakeupWaitingThreadFromISR(hi2c, I2C_STATE_TX_DONE, "TX");
 }
 
 extern void HAL_I2C_MasterRxCpltCallback(I2C_HandleTypeDef *hi2c)
 {
-	LOG_TRACE("I2C INT RX");
-	WakeupWaitingThreadFromISR(hi2c, I2C_STATE_RX_DONE);
+	WakeupWaitingThreadFromISR(hi2c, I2C_STATE_RX_DONE, "RX");
 }
 
 extern void HAL_I2C_ErrorCallback(I2C_HandleTypeDef *hi2c)
 {
-	LOG_TRACE("I2C INT ER");
-	WakeupWaitingThreadFromISR(hi2c, I2C_STATE_ERROR);
+	WakeupWaitingThreadFromISR(hi2c, I2C_STATE_ERROR, "ER");
 }
