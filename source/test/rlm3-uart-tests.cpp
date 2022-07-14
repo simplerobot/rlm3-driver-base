@@ -11,10 +11,25 @@
 LOGGER_ZONE(TEST);
 
 
+static volatile RLM3_Task g_uart2_task = nullptr;
+static volatile uint8_t* g_uart2_buffer_tx = nullptr;
+static volatile uint8_t* g_uart2_buffer_rx = nullptr;
+static volatile size_t g_uart2_size_tx = 0;
+static volatile size_t g_uart2_size_rx = 0;
+static volatile size_t g_uart2_error_count = 0;
+
+static volatile RLM3_Task g_uart4_task = nullptr;
+static volatile uint8_t* g_uart4_buffer_tx = nullptr;
+static volatile uint8_t* g_uart4_buffer_rx = nullptr;
+static volatile size_t g_uart4_size_tx = 0;
+static volatile size_t g_uart4_size_rx = 0;
+static volatile size_t g_uart4_error_count = 0;
+
+
 TEST_CASE(UART2_Lifecycle_HappyCase)
 {
 	ASSERT(!RLM3_UART2_IsInit());
-	RLM3_UART2_Init();
+	RLM3_UART2_Init(115200);
 	ASSERT(RLM3_UART2_IsInit());
 	RLM3_UART2_Deinit();
 	ASSERT(!RLM3_UART2_IsInit());
@@ -23,7 +38,7 @@ TEST_CASE(UART2_Lifecycle_HappyCase)
 TEST_CASE(UART4_Lifecycle_HappyCase)
 {
 	ASSERT(!RLM3_UART4_IsInit());
-	RLM3_UART4_Init();
+	RLM3_UART4_Init(115200);
 	ASSERT(RLM3_UART4_IsInit());
 	RLM3_UART4_Deinit();
 	ASSERT(!RLM3_UART4_IsInit());
@@ -31,25 +46,51 @@ TEST_CASE(UART4_Lifecycle_HappyCase)
 
 TEST_CASE(UART2_Transmit_HappyCase)
 {
-	RLM3_UART2_Init();
-	bool result = RLM3_UART2_Transmit((const uint8_t*)"ABCDEFGHIJKLMNOPQRSTUVWXYZ\r\n", 28);
+	uint8_t buffer[26];
+	for (size_t i = 0; i < 26; i++)
+		buffer[i] = 'A' + i;
+	RLM3_UART2_Init(115200);
+
+	g_uart2_task = RLM3_GetCurrentTask();
+	g_uart2_buffer_tx = buffer;
+	g_uart2_size_tx = 26;
+
+	RLM3_UART2_EnsureTransmit();
+	for (size_t i = 0; i < 10 && g_uart2_size_tx != 0; i++)
+		RLM3_TakeTimeout(0);
+	g_uart2_task = nullptr;
+
 	RLM3_UART2_Deinit();
 
-	ASSERT(result);
+	ASSERT(g_uart2_size_tx == 0);
+	ASSERT(g_uart2_error_count == 0);
 }
 
 TEST_CASE(UART4_Transmit_HappyCase)
 {
-	RLM3_UART4_Init();
-	bool result = RLM3_UART4_Transmit((const uint8_t*)"ABCDEFGHIJKLMNOPQRSTUVWXYZ\r\n", 28);
+	uint8_t buffer[26];
+	for (size_t i = 0; i < 26; i++)
+		buffer[i] = 'A' + i;
+	RLM3_UART4_Init(115200);
+
+	g_uart4_task = RLM3_GetCurrentTask();
+	g_uart4_buffer_tx = buffer;
+	g_uart4_size_tx = 26;
+
+	RLM3_UART4_EnsureTransmit();
+	for (size_t i = 0; i < 10 && g_uart4_size_tx != 0; i++)
+		RLM3_TakeTimeout(0);
+	g_uart4_task = nullptr;
+
 	RLM3_UART4_Deinit();
 
-	ASSERT(result);
+	ASSERT(g_uart4_size_tx == 0);
+	ASSERT(g_uart4_error_count == 0);
 }
 
-TEST_CASE(UART_Receive_HappyCase)
+TEST_CASE(UART2_Receive_HappyCase)
 {
-	RLM3_UART2_Init();
+	RLM3_UART2_Init(115200);
 
 	// Enable GPS Reset Pin
 	__HAL_RCC_GPIOB_CLK_ENABLE();
@@ -68,33 +109,83 @@ TEST_CASE(UART_Receive_HappyCase)
 	RLM3_Delay(1000);
 
 	uint8_t command[] = { 0xA0, 0xA1, 0x00, 0x01, 0x10, 0x10, 0x0D, 0x0A }; // Query position update rate.
-	ASSERT(RLM3_UART2_Transmit(command, sizeof(command)));
+	g_uart2_buffer_tx = command;
+	g_uart2_size_tx = sizeof(command);
+	RLM3_UART2_EnsureTransmit();
 
-	RLM3_Time start_time = RLM3_GetCurrentTime();
-	std::vector<uint8_t> buffer;
-	buffer.reserve(1024);
-	while (RLM3_GetCurrentTime() - start_time < 500)
-	{
-		const uint8_t* data;
-		size_t size;
-		bool result = RLM3_UART2_ReceiveWithTimeout(&data, &size, 1000);
-		if (result)
-			for (size_t i = 0; i < size; i++)
-				buffer.push_back(data[i]);
-	}
+	uint8_t buffer[32];
+	g_uart2_buffer_rx = buffer;
+	g_uart2_size_rx = 32;
+
+	RLM3_Delay(500);
 
 	RLM3_UART2_Deinit();
 
-	ASSERT(buffer.size() == 18);
-	ASSERT(buffer == std::vector<uint8_t>({ 0xA0, 0xA1, 0x00, 0x02, 0x83, 0x10, 0x93, 0x0D, 0x0A, 0xA0, 0xA1, 0x00, 0x02, 0x86, 0x01, 0x87, 0x0D, 0x0A }));
+	size_t count = 32 - g_uart2_size_rx;
+
+	ASSERT(count == 18);
+	const uint8_t expected[18] = { 0xA0, 0xA1, 0x00, 0x02, 0x83, 0x10, 0x93, 0x0D, 0x0A, 0xA0, 0xA1, 0x00, 0x02, 0x86, 0x01, 0x87, 0x0D, 0x0A };
+	for (size_t i = 0; i < 18; i++)
+		ASSERT(buffer[i] == expected[i]);
 }
 
-/*
-extern void RLM3_UART4_Init();
-extern void RLM3_UART4_Deinit();
-extern bool RLM3_UART4_IsInit();
+extern void RLM3_UART2_ReceiveCallback(uint8_t data)
+{
+	if (g_uart2_buffer_rx != nullptr && g_uart2_size_rx != 0)
+	{
+		*(g_uart2_buffer_rx++) = data;
+		if (--g_uart2_size_rx == 0)
+		{
+			g_uart2_buffer_rx = nullptr;
+			RLM3_GiveFromISR(g_uart2_task);
+		}
+	}
+}
 
-extern bool RLM3_UART4_Transmit(const uint8_t* data, size_t size);
-extern bool RLM3_UART4_Receive(const uint8_t** data, size_t* size);
+extern bool RLM3_UART2_TransmitCallback(uint8_t* data_to_send)
+{
+	if (g_uart2_buffer_tx == nullptr || g_uart2_size_tx == 0)
+		return false;
+	*data_to_send = *(g_uart2_buffer_tx++);
+	if (--g_uart2_size_tx == 0)
+	{
+		g_uart2_buffer_tx = nullptr;
+		RLM3_GiveFromISR(g_uart2_task);
+	}
+	return true;
+}
 
- */
+extern void RLM3_UART2_ErrorCallback(uint32_t status_flags)
+{
+	g_uart2_error_count++;
+}
+
+extern void RLM3_UART4_ReceiveCallback(uint8_t data)
+{
+	if (g_uart4_buffer_rx != nullptr && g_uart4_size_rx != 0)
+	{
+		*(g_uart4_buffer_rx++) = data;
+		if (--g_uart4_size_rx == 0)
+		{
+			g_uart4_buffer_rx = nullptr;
+			RLM3_GiveFromISR(g_uart4_task);
+		}
+	}
+}
+extern bool RLM3_UART4_TransmitCallback(uint8_t* data_to_send)
+{
+	if (g_uart4_buffer_tx == nullptr || g_uart4_size_tx == 0)
+		return false;
+	*data_to_send = *(g_uart4_buffer_tx++);
+	if (--g_uart4_size_tx == 0)
+	{
+		g_uart4_buffer_tx = nullptr;
+		RLM3_GiveFromISR(g_uart4_task);
+	}
+	return true;
+}
+
+extern void RLM3_UART4_ErrorCallback(uint32_t status_flags)
+{
+	g_uart4_error_count++;
+}

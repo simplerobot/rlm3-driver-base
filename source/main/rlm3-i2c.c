@@ -171,7 +171,7 @@ static void WakeupWaitingThreadFromISR(I2C_HandleTypeDef *hi2c, uint8_t new_stat
 	if (hi2c == &hi2c1)
 	{
 		g_state_i2c1 = new_state;
-		RLM3_Give(g_waiting_thread_i2c1);
+		RLM3_GiveFromISR(g_waiting_thread_i2c1);
 	}
 }
 

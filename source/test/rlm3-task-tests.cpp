@@ -246,7 +246,7 @@ extern "C" void TIM2_IRQHandler(void)
 {
 	TIM2->SR = ~TIM_IT_UPDATE;
 	if (g_target_task != nullptr)
-		RLM3_Give(g_target_task);
+		RLM3_GiveFromISR(g_target_task);
 }
 
 TEST_CASE(Task_Give_FromISR)

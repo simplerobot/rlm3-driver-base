@@ -46,17 +46,21 @@ extern RLM3_Task RLM3_GetCurrentTask()
 
 extern void RLM3_Give(RLM3_Task task)
 {
-	if (task == NULL)
-		return;
-	if (IsISR())
+	ASSERT(!IsISR());
+	if (task != NULL)
+	{
+		xTaskNotifyGive(task);
+	}
+}
+
+extern void RLM3_GiveFromISR(RLM3_Task task)
+{
+	ASSERT(IsISR());
+	if (task != NULL)
 	{
 		BaseType_t higher_priority_task_woken = pdFALSE;
 		vTaskNotifyGiveFromISR(task, &higher_priority_task_woken);
 		portYIELD_FROM_ISR(higher_priority_task_woken);
-	}
-	else
-	{
-		xTaskNotifyGive(task);
 	}
 }
 

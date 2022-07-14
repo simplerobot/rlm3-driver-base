@@ -17,6 +17,7 @@ extern void RLM3_DelayUntil(RLM3_Time time);
 
 extern RLM3_Task RLM3_GetCurrentTask();
 extern void RLM3_Give(RLM3_Task task);
+extern void RLM3_GiveFromISR(RLM3_Task task);
 extern void RLM3_Take();
 extern bool RLM3_TakeTimeout(RLM3_Time timeout_ms);
 extern bool RLM3_TakeUntil(RLM3_Time time);
