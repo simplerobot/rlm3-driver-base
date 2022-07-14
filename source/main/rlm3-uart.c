@@ -144,11 +144,11 @@ void USART2_IRQHandler(void)
 	uint32_t SR = uart->SR;
 	uint32_t CR1 = uart->CR1;
 
-	if ((SR & USART_SR_RXNE) != 0 && (CR1 & USART_CR1_RXNEIE))
+	if ((SR & USART_SR_RXNE) != 0 && (CR1 & USART_CR1_RXNEIE) != 0)
 	{
 		RLM3_UART2_ReceiveCallback(uart->DR & 0xFF);
 	}
-	if ((SR & USART_SR_TXE) != 0 && (CR1 & USART_CR1_TXEIE))
+	if ((SR & USART_SR_TXE) != 0 && (CR1 & USART_CR1_TXEIE) != 0)
 	{
 		uint8_t data = 0;
 		if (RLM3_UART2_TransmitCallback(&data))
@@ -173,11 +173,11 @@ void UART4_IRQHandler(void)
 	uint32_t SR = uart->SR;
 	uint32_t CR1 = uart->CR1;
 
-	if ((SR & USART_SR_RXNE) != 0 && (CR1 & USART_CR1_RXNEIE))
+	if ((SR & USART_SR_RXNE) != 0 && (CR1 & USART_CR1_RXNEIE) != 0)
 	{
 		RLM3_UART4_ReceiveCallback(uart->DR & 0xFF);
 	}
-	if ((SR & USART_SR_TXE) != 0 && (CR1 & USART_CR1_TXEIE))
+	if ((SR & USART_SR_TXE) != 0 && (CR1 & USART_CR1_TXEIE) != 0)
 	{
 		uint8_t data = 0;
 		if (RLM3_UART4_TransmitCallback(&data))
@@ -197,34 +197,34 @@ void UART4_IRQHandler(void)
 }
 
 
-__weak extern void RLM3_UART2_ReceiveCallback(uint8_t data)
+extern __weak void RLM3_UART2_ReceiveCallback(uint8_t data)
 {
 	// DO NOT MODIFIY THIS FUNCTION.  Override it by declaring a non-weak version in your project files.
 }
 
-__weak extern bool RLM3_UART2_TransmitCallback(uint8_t* data_to_send)
-{
-	// DO NOT MODIFIY THIS FUNCTION.  Override it by declaring a non-weak version in your project files.
-	return false;
-}
-
-__weak extern void RLM3_UART2_ErrorCallback(uint32_t status_flags)
-{
-	// DO NOT MODIFIY THIS FUNCTION.  Override it by declaring a non-weak version in your project files.
-}
-
-__weak extern void RLM3_UART4_ReceiveCallback(uint8_t data)
-{
-	// DO NOT MODIFIY THIS FUNCTION.  Override it by declaring a non-weak version in your project files.
-}
-
-__weak extern bool RLM3_UART4_TransmitCallback(uint8_t* data_to_send)
+extern __weak bool RLM3_UART2_TransmitCallback(uint8_t* data_to_send)
 {
 	// DO NOT MODIFIY THIS FUNCTION.  Override it by declaring a non-weak version in your project files.
 	return false;
 }
 
-__weak extern void RLM3_UART4_ErrorCallback(uint32_t status_flags)
+extern __weak void RLM3_UART2_ErrorCallback(uint32_t status_flags)
+{
+	// DO NOT MODIFIY THIS FUNCTION.  Override it by declaring a non-weak version in your project files.
+}
+
+extern __weak void RLM3_UART4_ReceiveCallback(uint8_t data)
+{
+	// DO NOT MODIFIY THIS FUNCTION.  Override it by declaring a non-weak version in your project files.
+}
+
+extern __weak bool RLM3_UART4_TransmitCallback(uint8_t* data_to_send)
+{
+	// DO NOT MODIFIY THIS FUNCTION.  Override it by declaring a non-weak version in your project files.
+	return false;
+}
+
+extern __weak void RLM3_UART4_ErrorCallback(uint32_t status_flags)
 {
 	// DO NOT MODIFIY THIS FUNCTION.  Override it by declaring a non-weak version in your project files.
 }
