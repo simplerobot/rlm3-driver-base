@@ -24,19 +24,17 @@ extern void RLM3_Yield()
 	taskYIELD();
 }
 
-extern void RLM3_Delay(RLM3_Time time_ms)
+extern void RLM3_Delay(RLM3_Time delay_ms)
 {
 	ASSERT(!IsISR());
-	vTaskDelay(time_ms + 1);
+	vTaskDelay(delay_ms + 1);
 }
 
-extern void RLM3_DelayUntil(RLM3_Time target_time)
+extern void RLM3_DelayUntil(RLM3_Time start_time, RLM3_Time delay_ms)
 {
 	ASSERT(!IsISR());
-	RLM3_Time current_time = xTaskGetTickCount();
-	RLM3_Time delay = target_time - current_time;
-	if ((int)delay > 0)
-		vTaskDelayUntil(&current_time, delay);
+	RLM3_Time start_time_copy = start_time;
+	vTaskDelayUntil(&start_time_copy, delay_ms);
 }
 
 extern RLM3_Task RLM3_GetCurrentTask()
@@ -70,22 +68,19 @@ extern void RLM3_Take()
 	ulTaskNotifyTake(pdTRUE, portMAX_DELAY);
 }
 
-extern bool RLM3_TakeTimeout(RLM3_Time timeout_ms)
+extern bool RLM3_TakeWithTimeout(RLM3_Time timeout_ms)
 {
 	ASSERT(!IsISR());
 	uint32_t value = ulTaskNotifyTake(pdTRUE, timeout_ms + 1);
 	return (value > 0);
 }
 
-extern bool RLM3_TakeUntil(RLM3_Time target_time)
+extern bool RLM3_TakeUntil(RLM3_Time start_time, RLM3_Time delay_ms)
 {
 	ASSERT(!IsISR());
 	RLM3_Time current_time = xTaskGetTickCount();
-	RLM3_Time delay = target_time - current_time;
-	if ((int)delay <= 0)
+	if (current_time - start_time >= delay_ms)
 		return false;
-	uint32_t value = ulTaskNotifyTake(pdTRUE, delay);
+	uint32_t value = ulTaskNotifyTake(pdTRUE, delay_ms + start_time - current_time);
 	return (value > 0);
 }
-
-

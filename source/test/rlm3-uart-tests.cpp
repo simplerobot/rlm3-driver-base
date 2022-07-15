@@ -57,7 +57,7 @@ TEST_CASE(UART2_Transmit_HappyCase)
 
 	RLM3_UART2_EnsureTransmit();
 	for (size_t i = 0; i < 10 && g_uart2_size_tx != 0; i++)
-		RLM3_TakeTimeout(0);
+		RLM3_TakeWithTimeout(0);
 	g_uart2_task = nullptr;
 
 	RLM3_UART2_Deinit();
@@ -79,7 +79,7 @@ TEST_CASE(UART4_Transmit_HappyCase)
 
 	RLM3_UART4_EnsureTransmit();
 	for (size_t i = 0; i < 10 && g_uart4_size_tx != 0; i++)
-		RLM3_TakeTimeout(0);
+		RLM3_TakeWithTimeout(0);
 	g_uart4_task = nullptr;
 
 	RLM3_UART4_Deinit();

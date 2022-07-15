@@ -5,6 +5,13 @@
 #include "rlm3-helper.h"
 
 
+/*
+ * This UART interface was written to provide a simple interface to the UARTs used on the RLM3 PCB.  This interface
+ * makes no assumptions about how the data is used.  When it needs data, it asks the application for it.  When it
+ * receives data, it sends it to the application.
+ */
+
+
 static void UART_Init(USART_TypeDef* uart, uint32_t baud_rate)
 {
 	ASSERT(baud_rate <= 10500000);

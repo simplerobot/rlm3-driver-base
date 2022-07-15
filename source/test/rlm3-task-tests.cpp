@@ -90,11 +90,10 @@ TEST_CASE(Task_Delay_HappyCase)
 TEST_CASE(Task_DelayUntil_HappyCase)
 {
 	RLM3_Time start_time = RLM3_GetCurrentTime();
-	RLM3_Time target_time = start_time + 3;
-	RLM3_DelayUntil(target_time);
+	RLM3_DelayUntil(start_time, 3);
 	RLM3_Time actual_time = RLM3_GetCurrentTime();
 
-	ASSERT(target_time == actual_time);
+	ASSERT(start_time + 3 == actual_time);
 }
 
 TEST_CASE(Task_GetCurrentTask_SingleThread)
@@ -287,22 +286,22 @@ TEST_CASE(Task_Give_FromISR)
 	ASSERT(20 <= elapsed && elapsed <= 21);
 }
 
-TEST_CASE(Task_TakeTimeout_HappyCase)
+TEST_CASE(Task_TakeWithTimeout_HappyCase)
 {
 	RLM3_Give(RLM3_GetCurrentTask());
 
 	RLM3_Time start_time = RLM3_GetCurrentTime();
-	bool result = RLM3_TakeTimeout(10);
+	bool result = RLM3_TakeWithTimeout(10);
 	RLM3_Time elapsed = RLM3_GetCurrentTime() - start_time;
 
 	ASSERT(result);
 	ASSERT(elapsed <= 1);
 }
 
-TEST_CASE(Task_TakeTimeout_Timeout)
+TEST_CASE(Task_TakeWithTimeout_Timeout)
 {
 	RLM3_Time start_time = RLM3_GetCurrentTime();
-	bool result = RLM3_TakeTimeout(10);
+	bool result = RLM3_TakeWithTimeout(10);
 	RLM3_Time elapsed = RLM3_GetCurrentTime() - start_time;
 
 	ASSERT(!result);
@@ -313,9 +312,8 @@ TEST_CASE(Task_TakeUntil_HappyCase)
 {
 	RLM3_Give(RLM3_GetCurrentTask());
 	RLM3_Time start_time = RLM3_GetCurrentTime();
-	RLM3_Time target_time = start_time + 10;
 
-	bool result = RLM3_TakeUntil(target_time);
+	bool result = RLM3_TakeUntil(start_time, 10);
 	RLM3_Time elapsed = RLM3_GetCurrentTime() - start_time;
 
 	ASSERT(result);
@@ -324,10 +322,10 @@ TEST_CASE(Task_TakeUntil_HappyCase)
 
 TEST_CASE(Task_TakeUntil_Timeout)
 {
-	RLM3_Time current_time = RLM3_GetCurrentTime();
-	RLM3_Time target_time = current_time + 10;
+	RLM3_Time start_time = RLM3_GetCurrentTime();
+	RLM3_Time target_time = start_time + 10;
 
-	bool result = RLM3_TakeUntil(target_time);
+	bool result = RLM3_TakeUntil(start_time, 10);
 	RLM3_Time end_time = RLM3_GetCurrentTime();
 
 	ASSERT(!result);

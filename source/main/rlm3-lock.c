@@ -181,12 +181,9 @@ extern bool RLM3_MutexLock_Try(RLM3_MutexLock* lock, size_t timeout_ms)
 
 	// Wait until no other tasks are in front of us.
 	TickType_t start_time = xTaskGetTickCount();
-	TickType_t timeout_ticks = pdMS_TO_TICKS(timeout_ms);
 	while ((blocking_task = GetNext(current_task)) != NULL)
 	{
-		// Check for timeout.
-		TickType_t current_time = xTaskGetTickCount();
-		if (current_time - start_time >= timeout_ticks)
+		if (!RLM3_TakeUntil(start_time, timeout_ms))
 		{
 			// We timed out.  Remove our task from the waiting queue.
 			TaskHandle_t prev = NULL;
@@ -198,10 +195,6 @@ extern bool RLM3_MutexLock_Try(RLM3_MutexLock* lock, size_t timeout_ms)
 				RLM3_Give(prev);
 			return false;
 		}
-
-		// Wait for notification.
-		TickType_t wait_time = start_time + timeout_ticks - current_time;
-		RLM3_TakeTimeout(wait_time);
 	}
 
 #ifdef TEST
