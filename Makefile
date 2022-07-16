@@ -1,6 +1,7 @@
 GITHUB_DEPS += simplerobot/build-scripts
 GITHUB_DEPS += simplerobot/hw-test-agent
 GITHUB_DEPS += simplerobot/rlm3-hardware
+GITHUB_DEPS += simplerobot/rlm3-base
 GITHUB_DEPS += simplerobot/logger
 GITHUB_DEPS += simplerobot/test-stm32
 include ../build-scripts/build/release/include.make
@@ -38,13 +39,13 @@ STRESS_SOURCE_DIR = $(SOURCE_DIR)/stress
 
 LIBRARY_FILES = $(notdir $(wildcard $(MAIN_SOURCE_DIR)/*))
 
-TEST_SOURCE_DIRS = $(MAIN_SOURCE_DIR) $(TEST_SOURCE_DIR) $(PKG_RLM3_HARDWARE_DIR) $(PKG_LOGGER_DIR) $(PKG_TEST_STM32_DIR)
+TEST_SOURCE_DIRS = $(MAIN_SOURCE_DIR) $(TEST_SOURCE_DIR) $(PKG_RLM3_HARDWARE_DIR) $(PKG_RLM3_BASE_DIR) $(PKG_LOGGER_DIR) $(PKG_TEST_STM32_DIR)
 TEST_SOURCE_FILES = $(notdir $(wildcard $(TEST_SOURCE_DIRS:%=%/*.c) $(TEST_SOURCE_DIRS:%=%/*.cpp) $(TEST_SOURCE_DIRS:%=%/*.s)))
 TEST_BUILD_DIR = $(BUILD_DIR)/test
 TEST_O_FILES = $(addsuffix .o,$(basename $(TEST_SOURCE_FILES)))
 TEST_LD_FILE = $(wildcard $(PKG_RLM3_HARDWARE_DIR)/*.ld)
 
-STRESS_SOURCE_DIRS = $(MAIN_SOURCE_DIR) $(STRESS_SOURCE_DIR) $(PKG_RLM3_HARDWARE_DIR) $(PKG_LOGGER_DIR) $(PKG_TEST_STM32_DIR)
+STRESS_SOURCE_DIRS = $(MAIN_SOURCE_DIR) $(STRESS_SOURCE_DIR) $(PKG_RLM3_HARDWARE_DIR) $(PKG_RLM3_BASE_DIR) $(PKG_LOGGER_DIR) $(PKG_TEST_STM32_DIR)
 STRESS_SOURCE_FILES = $(notdir $(wildcard $(STRESS_SOURCE_DIRS:%=%/*.c) $(STRESS_SOURCE_DIRS:%=%/*.cpp) $(STRESS_SOURCE_DIRS:%=%/*.s)))
 STRESS_BUILD_DIR = $(BUILD_DIR)/stress
 STRESS_O_FILES = $(addsuffix .o,$(basename $(STRESS_SOURCE_FILES)))
