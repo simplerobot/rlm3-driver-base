@@ -148,8 +148,8 @@ extern void RLM3_UART4_EnsureTransmit()
 void USART2_IRQHandler(void)
 {
 	USART_TypeDef* uart = USART2;
-	uint32_t SR = uart->SR;
 	uint32_t CR1 = uart->CR1;
+	uint32_t SR = uart->SR;
 
 	if ((SR & USART_SR_RXNE) != 0 && (CR1 & USART_CR1_RXNEIE) != 0)
 	{
@@ -177,8 +177,8 @@ void USART2_IRQHandler(void)
 void UART4_IRQHandler(void)
 {
 	USART_TypeDef* uart = UART4;
-	uint32_t SR = uart->SR;
 	uint32_t CR1 = uart->CR1;
+	uint32_t SR = uart->SR;
 
 	if ((SR & USART_SR_RXNE) != 0 && (CR1 & USART_CR1_RXNEIE) != 0)
 	{

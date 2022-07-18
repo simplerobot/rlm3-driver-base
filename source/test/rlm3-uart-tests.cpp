@@ -127,6 +127,7 @@ TEST_CASE(UART2_Receive_HappyCase)
 	const uint8_t expected[18] = { 0xA0, 0xA1, 0x00, 0x02, 0x83, 0x10, 0x93, 0x0D, 0x0A, 0xA0, 0xA1, 0x00, 0x02, 0x86, 0x01, 0x87, 0x0D, 0x0A };
 	for (size_t i = 0; i < 18; i++)
 		ASSERT(buffer[i] == expected[i]);
+	ASSERT(g_uart2_error_count == 0);
 }
 
 extern void RLM3_UART2_ReceiveCallback(uint8_t data)
