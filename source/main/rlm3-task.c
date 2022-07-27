@@ -12,10 +12,14 @@ static bool IsISR()
 
 extern RLM3_Time RLM3_GetCurrentTime()
 {
-	if (IsISR())
-		return xTaskGetTickCountFromISR();
-	else
-		return xTaskGetTickCount();
+	ASSERT(!IsISR());
+	return xTaskGetTickCount();
+}
+
+extern RLM3_Time RLM3_GetCurrentTimeFromISR()
+{
+	ASSERT(IsISR());
+	return xTaskGetTickCountFromISR();
 }
 
 extern void RLM3_Yield()

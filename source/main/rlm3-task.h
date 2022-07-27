@@ -11,6 +11,7 @@ typedef void* RLM3_Task;
 typedef uint32_t RLM3_Time;
 
 extern RLM3_Time RLM3_GetCurrentTime();
+extern RLM3_Time RLM3_GetCurrentTimeFromISR();
 extern void RLM3_Yield();
 extern void RLM3_Delay(RLM3_Time time_ms);
 extern void RLM3_DelayUntil(RLM3_Time start_time, RLM3_Time delay_ms);
