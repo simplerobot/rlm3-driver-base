@@ -78,7 +78,7 @@ $(TEST_BUILD_DIR)/test.hex : $(TEST_BUILD_DIR)/test.elf
 	$(HX) $< $@
 
 $(TEST_BUILD_DIR)/test.elf : $(TEST_O_FILES:%=$(TEST_BUILD_DIR)/%)
-	$(CC) $(MCU) $(TEST_LD_FILE:%=-T%) -Wl,--gc-sections $^ $(LIBRARIES) -s -o $@ -Wl,-Map=$@.map,--cref
+	$(CC) $(MCU) $(TEST_LD_FILE:%=-T%) -Wl,--gc-sections $^ $(LIBRARIES) -o $@ -Wl,-Map=$@.map,--cref
 	$(SZ) $@
 
 $(TEST_BUILD_DIR)/%.o : %.c Makefile | $(TEST_BUILD_DIR)
