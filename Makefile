@@ -103,7 +103,7 @@ $(STRESS_BUILD_DIR)/stress.hex : $(STRESS_BUILD_DIR)/stress.elf
 	$(HX) $< $@
 
 $(STRESS_BUILD_DIR)/stress.elf : $(STRESS_O_FILES:%=$(STRESS_BUILD_DIR)/%)
-	$(CC) $(MCU) $(STRESS_LD_FILE:%=-T%) -Wl,--gc-sections $^ $(LIBRARIES) -s -o $@ -Wl,-Map=$@.map,--cref
+	$(CC) $(MCU) $(STRESS_LD_FILE:%=-T%) -Wl,--gc-sections $^ $(LIBRARIES) -o $@ -Wl,-Map=$@.map,--cref
 	$(SZ) $@
 
 $(STRESS_BUILD_DIR)/%.o : %.c Makefile | $(STRESS_BUILD_DIR)
