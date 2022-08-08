@@ -36,3 +36,10 @@ extern bool RLM3_DebugOutputFromISR(uint8_t c)
 	ITM->PORT[0U].u8 = c;
 	return true;
 }
+
+extern void RLM3_GetUniqueDeviceId(uint8_t id_out[12])
+{
+	for (size_t i = 0; i < 12; i++)
+		id_out[i] = ((uint8_t*)UID_BASE)[i];
+}
+
