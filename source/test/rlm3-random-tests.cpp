@@ -22,6 +22,8 @@ TEST_CASE(Random_Get)
 	static const size_t BUFFER_SIZE = 1024;
 	uint8_t* buffer = new uint8_t[BUFFER_SIZE];
 	size_t* counts = new size_t[256];
+	for (size_t i = 0; i < 256; i++)
+		counts[i] = 0;
 
 	RLM3_Random_Init();
 	for (size_t i = 0; i < 100; i++)
