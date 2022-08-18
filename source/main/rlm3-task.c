@@ -88,3 +88,23 @@ extern bool RLM3_TakeUntil(RLM3_Time start_time, RLM3_Time delay_ms)
 	uint32_t value = ulTaskNotifyTake(pdTRUE, delay_ms + start_time - current_time);
 	return (value > 0);
 }
+
+extern void RLM3_EnterCritical()
+{
+	taskENTER_CRITICAL();
+}
+
+extern uint32_t RLM3_EnterCriticalFromISR()
+{
+	return taskENTER_CRITICAL_FROM_ISR();
+}
+
+extern void RLM3_ExitCritical()
+{
+	taskEXIT_CRITICAL();
+}
+
+extern void RLM3_ExitCriticalFromISR(uint32_t saved_level)
+{
+	taskEXIT_CRITICAL_FROM_ISR(saved_level);
+}

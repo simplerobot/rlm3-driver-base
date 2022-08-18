@@ -10,6 +10,11 @@
 LOGGER_ZONE(TASK_TEST);
 
 
+typedef void (*TimerFn)();
+static void InitTimer2(TimerFn handler_fn);
+static void DeinitTimer2();
+
+
 TEST_CASE(Task_GetCurrentTime_HappyCase)
 {
 	RLM3_Time time0 = RLM3_GetCurrentTime();
@@ -238,49 +243,17 @@ TEST_CASE(Task_Give_Multiple)
 	ASSERT(secondary_count == 2);
 }
 
-
-static RLM3_Task g_target_task = nullptr;
-
-extern "C" void TIM2_IRQHandler(void)
-{
-	TIM2->SR = ~TIM_IT_UPDATE;
-	if (g_target_task != nullptr)
-		RLM3_GiveFromISR(g_target_task);
-}
-
 TEST_CASE(Task_Give_FromISR)
 {
-	// Setup timer to 5000 times per second.
-	TIM_HandleTypeDef htim2 = { 0 };
-	htim2.Instance = TIM2;
-	htim2.Init.Prescaler = 0;
-	htim2.Init.CounterMode = TIM_COUNTERMODE_UP;
-	htim2.Init.Period = 180000000 / 5000 / 2;
-	htim2.Init.ClockDivision = TIM_CLOCKDIVISION_DIV1;
-	htim2.Init.AutoReloadPreload = TIM_AUTORELOAD_PRELOAD_DISABLE;
-	__HAL_RCC_TIM2_CLK_ENABLE();
-	ASSERT(HAL_TIM_Base_Init(&htim2) == HAL_OK);
-	TIM_ClockConfigTypeDef sClockSourceConfig = { 0 };
-	sClockSourceConfig.ClockSource = TIM_CLOCKSOURCE_INTERNAL;
-	ASSERT(HAL_TIM_ConfigClockSource(&htim2, &sClockSourceConfig) == HAL_OK);
-	TIM_MasterConfigTypeDef sMasterConfig = { 0 };
-	sMasterConfig.MasterOutputTrigger = TIM_TRGO_RESET;
-	sMasterConfig.MasterSlaveMode = TIM_MASTERSLAVEMODE_DISABLE;
-	ASSERT(HAL_TIMEx_MasterConfigSynchronization(&htim2, &sMasterConfig) == HAL_OK);
-	HAL_NVIC_SetPriority(TIM2_IRQn, 5, 0);
-	HAL_NVIC_EnableIRQ(TIM2_IRQn);
-	ASSERT(HAL_TIM_Base_Start_IT(&htim2) == HAL_OK);
+	static RLM3_Task g_target_task = RLM3_GetCurrentTask();
+	InitTimer2([] { RLM3_GiveFromISR(g_target_task); });
 
 	RLM3_Time start_time = RLM3_GetCurrentTime();
-	g_target_task = RLM3_GetCurrentTask();
 	for (size_t i = 0; i < 100; i++)
 		RLM3_Take();
-	g_target_task = nullptr;
 	RLM3_Time end_time = RLM3_GetCurrentTime();
 
-	HAL_TIM_Base_Stop_IT(&htim2);
-	HAL_TIM_Base_DeInit(&htim2);
-	__HAL_RCC_TIM2_CLK_DISABLE();
+	DeinitTimer2();
 
 	RLM3_Time elapsed = end_time - start_time;
 	ASSERT(20 <= elapsed && elapsed <= 21);
@@ -330,5 +303,75 @@ TEST_CASE(Task_TakeUntil_Timeout)
 
 	ASSERT(!result);
 	ASSERT(end_time == target_time);
+}
+
+TEST_CASE(Task_EnterCritical)
+{
+	static volatile uint32_t g_count = 0;
+	InitTimer2([] {
+		ASSERT(g_count % 1000 == 0);
+	});
+
+	for (size_t i = 0; i < 1000; i++)
+	{
+		RLM3_EnterCritical();
+		for (size_t j = 0; j < 1000; j++)
+			g_count++;
+		RLM3_ExitCritical();
+	}
+
+	DeinitTimer2();
+}
+
+TEST_CASE(Task_EnterCriticalFromISR)
+{
+	InitTimer2([] {
+		uint32_t saved = RLM3_EnterCriticalFromISR();
+		RLM3_ExitCriticalFromISR(saved);
+	});
+	RLM3_Delay(10);
+	DeinitTimer2();
+}
+
+static TIM_HandleTypeDef g_htim2 = { 0 };
+static TimerFn g_tim2fn = NULL;
+
+extern "C" void TIM2_IRQHandler(void)
+{
+	TIM2->SR = ~TIM_IT_UPDATE;
+	if (g_tim2fn != nullptr)
+		g_tim2fn();
+}
+
+static void InitTimer2(TimerFn handler_fn)
+{
+	// Setup timer to 5000 times per second.
+	g_tim2fn = handler_fn;
+	g_htim2.Instance = TIM2;
+	g_htim2.Init.Prescaler = 0;
+	g_htim2.Init.CounterMode = TIM_COUNTERMODE_UP;
+	g_htim2.Init.Period = 180000000 / 5000 / 2;
+	g_htim2.Init.ClockDivision = TIM_CLOCKDIVISION_DIV1;
+	g_htim2.Init.AutoReloadPreload = TIM_AUTORELOAD_PRELOAD_DISABLE;
+	__HAL_RCC_TIM2_CLK_ENABLE();
+	ASSERT(HAL_TIM_Base_Init(&g_htim2) == HAL_OK);
+	TIM_ClockConfigTypeDef sClockSourceConfig = { 0 };
+	sClockSourceConfig.ClockSource = TIM_CLOCKSOURCE_INTERNAL;
+	ASSERT(HAL_TIM_ConfigClockSource(&g_htim2, &sClockSourceConfig) == HAL_OK);
+	TIM_MasterConfigTypeDef sMasterConfig = { 0 };
+	sMasterConfig.MasterOutputTrigger = TIM_TRGO_RESET;
+	sMasterConfig.MasterSlaveMode = TIM_MASTERSLAVEMODE_DISABLE;
+	ASSERT(HAL_TIMEx_MasterConfigSynchronization(&g_htim2, &sMasterConfig) == HAL_OK);
+	HAL_NVIC_SetPriority(TIM2_IRQn, 5, 0);
+	HAL_NVIC_EnableIRQ(TIM2_IRQn);
+	ASSERT(HAL_TIM_Base_Start_IT(&g_htim2) == HAL_OK);
+}
+
+static void DeinitTimer2()
+{
+	HAL_TIM_Base_Stop_IT(&g_htim2);
+	HAL_TIM_Base_DeInit(&g_htim2);
+	__HAL_RCC_TIM2_CLK_DISABLE();
+	g_tim2fn = nullptr;
 }
 
