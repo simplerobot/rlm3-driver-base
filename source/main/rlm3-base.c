@@ -14,6 +14,15 @@ extern bool RLM3_IsSchedulerRunning()
 	return (xTaskGetSchedulerState() == taskSCHEDULER_RUNNING);
 }
 
+extern bool RLM3_IsDebugOutput()
+{
+	if ((ITM->TCR & ITM_TCR_ITMENA_Msk) == 0)
+		return false;
+	if ((ITM->TER & 1UL) == 0)
+		return false;
+	return true;
+}
+
 extern void RLM3_DebugOutput(uint8_t c)
 {
 	if ((ITM->TCR & ITM_TCR_ITMENA_Msk) == 0)
