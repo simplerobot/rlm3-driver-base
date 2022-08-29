@@ -18,6 +18,7 @@ extern void RLM3_DebugOutput(uint8_t c);
 extern bool RLM3_DebugOutputFromISR(uint8_t c);
 
 extern void RLM3_GetUniqueDeviceId(uint8_t id_out[12]);
+extern uint32_t RLM3_GetUniqueDeviceShortId();
 
 
 #ifdef __cplusplus

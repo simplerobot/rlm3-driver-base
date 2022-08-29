@@ -14,6 +14,13 @@ TEST_CASE(GetUniqueDeviceId_HappyCase)
 	LOG_ALWAYS("Device ID: %x %x %x %x %x %x %x %x %x %x %x %x", id[0], id[1], id[2], id[3], id[4], id[5], id[6], id[7], id[8], id[9], id[10], id[11]);
 }
 
+TEST_CASE(GetUniqueDeviceShortId_HappyCase)
+{
+	uint32_t id = RLM3_GetUniqueDeviceShortId();
+
+	LOG_ALWAYS("Device ID: %x", (unsigned int)id);
+}
+
 TEST_CASE(IsDebugOutput_HappyCase)
 {
 	ASSERT(RLM3_IsDebugOutput());

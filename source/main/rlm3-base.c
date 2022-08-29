@@ -52,3 +52,11 @@ extern void RLM3_GetUniqueDeviceId(uint8_t id_out[12])
 		id_out[i] = ((uint8_t*)UID_BASE)[i];
 }
 
+extern uint32_t RLM3_GetUniqueDeviceShortId()
+{
+	uint32_t hash = 0;
+	for (size_t i = 0; i < 12; i++)
+		hash = hash * 65599 + ((uint8_t*)UID_BASE)[i];
+	return hash;
+}
+
